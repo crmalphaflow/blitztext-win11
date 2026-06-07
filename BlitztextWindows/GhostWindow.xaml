@@ -1,0 +1,15 @@
+<Window x:Class="BlitztextWindows.GhostWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="76" Height="76" WindowStyle="None" ResizeMode="NoResize"
+        AllowsTransparency="True" Background="Transparent" Topmost="True"
+        ShowInTaskbar="False" MouseDoubleClick="Window_MouseDoubleClick"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+    <Border x:Name="Shell" CornerRadius="38" Background="#16A34A" BorderBrush="#BBF7D0" BorderThickness="2">
+        <Grid>
+            <Ellipse Width="18" Height="28" Fill="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-8,0,0"/>
+            <Rectangle Width="6" Height="18" Fill="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,16,0,0" RadiusX="3" RadiusY="3"/>
+            <Rectangle Width="28" Height="5" Fill="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,34,0,0" RadiusX="2.5" RadiusY="2.5"/>
+        </Grid>
+    </Border>
+</Window>

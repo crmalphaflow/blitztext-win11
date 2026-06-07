@@ -43,6 +43,13 @@ The intent is not to ship a one-click finished app. The intent is to make a real
   </tr>
 </table>
 
+## Windows 11 Port
+
+A first Windows 11 implementation lives in [`BlitztextWindows/`](BlitztextWindows/).
+It is a separate WPF tray app because the original SwiftUI/AppKit app depends on
+macOS-only APIs. See [`docs/windows.md`](docs/windows.md) for build, run, and
+hotkey details.
+
 ## Requirements
 
 - macOS 14 or newer
