@@ -31,6 +31,8 @@ Windows user in `%APPDATA%\Blitztext\openai.key`.
 
 Workflow settings, custom prompts, Razer hotkeys, sound preferences, and
 per-mode paste behavior are stored in `%APPDATA%\Blitztext\settings.json`.
+Text shortcut contents are stored in the same settings file, but encrypted with
+Windows DPAPI for the current Windows user.
 
 ## Hotkeys
 
@@ -65,6 +67,8 @@ Implemented:
 - Windows tray app
 - Tray menu for starting the three workflows without opening the main window
 - Ghost mode with a small topmost microphone overlay and a learnable extra hotkey
+- Three encrypted text shortcuts for inserting email addresses, addresses,
+  passwords, or other reusable snippets via mouse/keyboard hotkeys
 - Microphone recording via NAudio
 - OpenAI `gpt-4o-mini-transcribe` transcription with automatic `whisper-1` fallback
 - OpenAI `gpt-4o-mini` rewrite workflows for professional emails and social posts

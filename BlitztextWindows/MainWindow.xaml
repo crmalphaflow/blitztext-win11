@@ -244,6 +244,29 @@
 
                             <Border Height="1" Background="#B8E3EF" Margin="0,2,0,16"/>
 
+                            <TextBlock Text="Textbausteine" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" FontSize="16" Margin="0,0,0,8"/>
+                            <TextBlock Text="Speichert Text lokal verschluesselt und fuegt ihn per Maustaste ein." Foreground="{StaticResource MutedBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                            <ComboBox x:Name="TextShortcutCombo" SelectionChanged="TextShortcutCombo_SelectionChanged" Margin="0,0,0,8"/>
+                            <TextBlock Text="Name" Foreground="{StaticResource MutedBrush}" FontSize="12"/>
+                            <TextBox x:Name="TextShortcutNameBox" TextChanged="TextShortcut_TextChanged" Margin="0,4,0,8" Padding="8,6"/>
+                            <TextBlock Text="Text" Foreground="{StaticResource MutedBrush}" FontSize="12"/>
+                            <TextBox x:Name="TextShortcutValueBox" TextChanged="TextShortcut_TextChanged" Margin="0,4,0,8"
+                                     MinHeight="76" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Padding="8"/>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="TextShortcutHotkeyText" VerticalAlignment="Center" Foreground="#315063" FontSize="12"/>
+                                <Button Grid.Column="1" Content="Taste lernen" Tag="TextShortcut" Click="LearnHotkey_Click" Padding="9,5"/>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                <Button Content="Jetzt einfuegen" Click="PasteTextShortcut_Click" Margin="0,0,8,0"/>
+                                <Button Content="Leeren" Click="ClearTextShortcut_Click"/>
+                            </StackPanel>
+
+                            <Border Height="1" Background="#B8E3EF" Margin="0,2,0,16"/>
+
                             <TextBlock Text="Modi anpassen" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" FontSize="16" Margin="0,0,0,8"/>
                             <ComboBox x:Name="ModeEditorCombo" SelectionChanged="ModeEditorCombo_SelectionChanged" Margin="0,0,0,8"/>
                             <TextBlock Text="Name" Foreground="{StaticResource MutedBrush}" FontSize="12"/>

@@ -24,10 +24,12 @@ public partial class MainWindow : Window, IDisposable
     private WorkflowKind activeWorkflow;
     private WorkflowKind? learningWorkflow;
     private bool learningGhostHotkey;
+    private bool learningTextShortcutHotkey;
     private IntPtr windowHandle;
     private bool workflowRunning;
     private bool disposed;
     private bool suppressModeEditorEvents;
+    private bool suppressTextShortcutEditorEvents;
     private bool suppressAppSettingEvents;
 
     public MainWindow()
@@ -36,6 +38,7 @@ public partial class MainWindow : Window, IDisposable
         settings = settingsStore.Load();
         settings.EnsureDefaults();
         InitializeModeEditor();
+        InitializeTextShortcutEditor();
         InitializeAppSettings();
         RefreshKeyHint();
         RefreshApiKeyEditor();
@@ -78,6 +81,22 @@ public partial class MainWindow : Window, IDisposable
                 return;
             }
 
+            if (learningTextShortcutHotkey)
+            {
+                if (e.Key == Key.Escape)
+                {
+                    learningTextShortcutHotkey = false;
+                    SetStatus("Textbaustein-Taste lernen abgebrochen.", AppVisualState.Ready);
+                }
+                else
+                {
+                    SaveLearnedTextShortcutHotkey(e.Key == Key.System ? e.SystemKey : e.Key);
+                }
+
+                e.Handled = true;
+                return;
+            }
+
             if (e.Key == Key.Escape)
             {
                 CancelWorkflow();
@@ -98,9 +117,10 @@ public partial class MainWindow : Window, IDisposable
     {
         var source = (HwndSource)PresentationSource.FromVisual(this);
         windowHandle = source.Handle;
-        hotkeys.Register(windowHandle, settings.Hotkeys);
+        hotkeys.Register(windowHandle, settings.Hotkeys, settings.TextShortcuts);
         hotkeys.HotkeyPressed += async (_, kind) => await Dispatcher.InvokeAsync(() => ToggleWorkflowAsync(kind));
         hotkeys.GhostPressed += (_, _) => Dispatcher.Invoke(ToggleGhostMode);
+        hotkeys.TextShortcutPressed += (_, shortcutId) => Dispatcher.Invoke(() => PasteTextShortcut(shortcutId));
     }
 
     private void CreateTrayIcon()
@@ -129,6 +149,11 @@ public partial class MainWindow : Window, IDisposable
         menu.Items.Add($"1  {ModeName(WorkflowKind.Transcribe)}", null, async (_, _) => await Dispatcher.InvokeAsync(() => ToggleWorkflowAsync(WorkflowKind.Transcribe)));
         menu.Items.Add($"2  {ModeName(WorkflowKind.Improve)}", null, async (_, _) => await Dispatcher.InvokeAsync(() => ToggleWorkflowAsync(WorkflowKind.Improve)));
         menu.Items.Add($"3  {ModeName(WorkflowKind.Calm)}", null, async (_, _) => await Dispatcher.InvokeAsync(() => ToggleWorkflowAsync(WorkflowKind.Calm)));
+        menu.Items.Add(new Forms.ToolStripSeparator());
+        foreach (var shortcut in settings.TextShortcuts.OrderBy(shortcut => shortcut.Id))
+        {
+            menu.Items.Add($"Text: {shortcut.Name}", null, (_, _) => Dispatcher.Invoke(() => PasteTextShortcut(shortcut.Id)));
+        }
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Ghost-Modus", null, (_, _) => Dispatcher.Invoke(ToggleGhostMode));
         menu.Items.Add("Oeffnen", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
@@ -344,6 +369,15 @@ public partial class MainWindow : Window, IDisposable
             return;
         }
 
+        if (tag == "TextShortcut")
+        {
+            learningTextShortcutHotkey = true;
+            ShowFromTray();
+            Focus();
+            SetStatus("Jetzt die Taste fuer den Textbaustein druecken ...", AppVisualState.Ready);
+            return;
+        }
+
         if (!Enum.TryParse<WorkflowKind>(tag, out var kind))
         {
             return;
@@ -410,11 +444,34 @@ public partial class MainWindow : Window, IDisposable
         SetStatus($"Ghost-Modus liegt jetzt auf {HotkeyName(virtualKey)}.", AppVisualState.Success);
     }
 
+    private void SaveLearnedTextShortcutHotkey(Key key)
+    {
+        var shortcut = SelectedTextShortcut();
+        if (shortcut is null)
+        {
+            return;
+        }
+
+        var virtualKey = KeyInterop.VirtualKeyFromKey(key);
+        if (virtualKey == 0)
+        {
+            SetStatus("Diese Taste konnte Windows nicht als Hotkey erkennen.", AppVisualState.Error);
+            return;
+        }
+
+        learningTextShortcutHotkey = false;
+        shortcut.Hotkey = virtualKey;
+        SaveSettings();
+        RefreshTextShortcutLabels();
+        ReregisterHotkeys();
+        SetStatus($"{shortcut.Name} liegt jetzt auf {HotkeyName(virtualKey)}.", AppVisualState.Success);
+    }
+
     private void ReregisterHotkeys()
     {
         if (windowHandle != IntPtr.Zero)
         {
-            hotkeys.Register(windowHandle, settings.Hotkeys);
+            hotkeys.Register(windowHandle, settings.Hotkeys, settings.TextShortcuts);
         }
     }
 
@@ -544,6 +601,137 @@ public partial class MainWindow : Window, IDisposable
                 item.Content = ModeName(kind);
             }
         }
+    }
+
+    private void InitializeTextShortcutEditor()
+    {
+        suppressTextShortcutEditorEvents = true;
+        TextShortcutCombo.Items.Clear();
+        foreach (var shortcut in settings.TextShortcuts.OrderBy(shortcut => shortcut.Id))
+        {
+            TextShortcutCombo.Items.Add(new ComboBoxItem
+            {
+                Content = shortcut.Name,
+                Tag = shortcut.Id
+            });
+        }
+
+        TextShortcutCombo.SelectedIndex = 0;
+        LoadTextShortcutEditor(SelectedTextShortcut());
+        suppressTextShortcutEditorEvents = false;
+    }
+
+    private void TextShortcutCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (suppressTextShortcutEditorEvents)
+        {
+            return;
+        }
+
+        LoadTextShortcutEditor(SelectedTextShortcut());
+    }
+
+    private TextShortcutSettings? SelectedTextShortcut()
+    {
+        var id = (TextShortcutCombo.SelectedItem as ComboBoxItem)?.Tag as int?;
+        return id is null
+            ? null
+            : settings.TextShortcuts.FirstOrDefault(shortcut => shortcut.Id == id.Value);
+    }
+
+    private void LoadTextShortcutEditor(TextShortcutSettings? shortcut)
+    {
+        if (shortcut is null)
+        {
+            return;
+        }
+
+        suppressTextShortcutEditorEvents = true;
+        TextShortcutNameBox.Text = shortcut.Name;
+        TextShortcutValueBox.Text = SecureTextProtector.Unprotect(shortcut.ProtectedText);
+        TextShortcutHotkeyText.Text = $"Taste: {HotkeyName(shortcut.Hotkey)}";
+        suppressTextShortcutEditorEvents = false;
+    }
+
+    private void TextShortcut_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        SaveTextShortcutEditor();
+    }
+
+    private void SaveTextShortcutEditor()
+    {
+        if (suppressTextShortcutEditorEvents || SelectedTextShortcut() is not { } shortcut)
+        {
+            return;
+        }
+
+        shortcut.Name = string.IsNullOrWhiteSpace(TextShortcutNameBox.Text)
+            ? $"Textbaustein {shortcut.Id}"
+            : TextShortcutNameBox.Text.Trim();
+        shortcut.ProtectedText = SecureTextProtector.Protect(TextShortcutValueBox.Text);
+        SaveSettings();
+        RefreshTextShortcutLabels();
+        RefreshTrayMenu();
+    }
+
+    private void RefreshTextShortcutLabels()
+    {
+        foreach (ComboBoxItem item in TextShortcutCombo.Items)
+        {
+            if (item.Tag is int id &&
+                settings.TextShortcuts.FirstOrDefault(shortcut => shortcut.Id == id) is { } shortcut)
+            {
+                item.Content = shortcut.Name;
+            }
+        }
+
+        if (SelectedTextShortcut() is { } selected)
+        {
+            TextShortcutHotkeyText.Text = $"Taste: {HotkeyName(selected.Hotkey)}";
+        }
+    }
+
+    private void PasteTextShortcut_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedTextShortcut() is { } shortcut)
+        {
+            PasteTextShortcut(shortcut.Id);
+        }
+    }
+
+    private void ClearTextShortcut_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedTextShortcut() is not { } shortcut)
+        {
+            return;
+        }
+
+        shortcut.ProtectedText = "";
+        TextShortcutValueBox.Text = "";
+        SaveSettings();
+        SetStatus($"{shortcut.Name} geleert.", AppVisualState.Ready);
+    }
+
+    private void PasteTextShortcut(int shortcutId)
+    {
+        var shortcut = settings.TextShortcuts.FirstOrDefault(item => item.Id == shortcutId);
+        if (shortcut is null)
+        {
+            return;
+        }
+
+        var value = SecureTextProtector.Unprotect(shortcut.ProtectedText);
+        if (string.IsNullOrEmpty(value))
+        {
+            SetStatus($"{shortcut.Name} ist leer.", AppVisualState.Error);
+            PlaySound(AppSound.Error);
+            return;
+        }
+
+        System.Windows.Clipboard.SetText(value);
+        pasteService.PasteClipboardText();
+        SetStatus($"{shortcut.Name} eingefuegt.", AppVisualState.Success);
+        PlaySound(AppSound.Done);
     }
 
     private void InitializeAppSettings()

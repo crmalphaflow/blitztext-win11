@@ -10,6 +10,7 @@ public sealed class AppSettings
     public bool StartInGhostMode { get; set; }
     public HotkeyBindings Hotkeys { get; set; } = new();
     public Dictionary<WorkflowKind, ModeSettings> Modes { get; set; } = ModeSettings.CreateDefaults();
+    public List<TextShortcutSettings> TextShortcuts { get; set; } = TextShortcutSettings.CreateDefaults();
 
     public void EnsureDefaults()
     {
@@ -23,6 +24,14 @@ public sealed class AppSettings
         }
 
         Hotkeys ??= new HotkeyBindings();
+        TextShortcuts ??= TextShortcutSettings.CreateDefaults();
+        foreach (var defaultShortcut in TextShortcutSettings.CreateDefaults())
+        {
+            if (TextShortcuts.All(shortcut => shortcut.Id != defaultShortcut.Id))
+            {
+                TextShortcuts.Add(defaultShortcut);
+            }
+        }
     }
 }
 
@@ -69,6 +78,21 @@ public sealed class ModeSettings
             Language = "de"
         }
     };
+}
+
+public sealed class TextShortcutSettings
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string ProtectedText { get; set; } = "";
+    public int? Hotkey { get; set; }
+
+    public static List<TextShortcutSettings> CreateDefaults() =>
+    [
+        new TextShortcutSettings { Id = 1, Name = "E-Mail-Adresse" },
+        new TextShortcutSettings { Id = 2, Name = "Adresse" },
+        new TextShortcutSettings { Id = 3, Name = "Passwort / Text" }
+    ];
 }
 
 public sealed class SettingsStore

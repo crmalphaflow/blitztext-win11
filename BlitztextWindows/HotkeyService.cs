@@ -25,8 +25,12 @@ public sealed class HotkeyService : IDisposable
 
     public event EventHandler<WorkflowKind>? HotkeyPressed;
     public event EventHandler? GhostPressed;
+    public event EventHandler<int>? TextShortcutPressed;
 
-    public void Register(IntPtr windowHandle, HotkeyBindings? bindings = null)
+    public void Register(
+        IntPtr windowHandle,
+        HotkeyBindings? bindings = null,
+        IEnumerable<TextShortcutSettings>? textShortcuts = null)
     {
         hwnd = windowHandle;
         if (!hookAdded)
@@ -51,6 +55,15 @@ public sealed class HotkeyService : IDisposable
         Register(nextId++, WorkflowKind.Calm, 0, VkF15);
         RegisterGhost(nextId++, 0, bindings?.Ghost is { } ghost ? (uint)ghost : VkNumPad4);
         RegisterGhost(nextId++, 0, VkF16);
+
+        if (textShortcuts is not null)
+        {
+            foreach (var shortcut in textShortcuts.Where(shortcut => shortcut.Hotkey.HasValue))
+            {
+                RegisterTextShortcut(nextId++, shortcut.Id, 0, (uint)shortcut.Hotkey!.Value);
+            }
+        }
+
         maxHotkeyId = nextId - 1;
     }
 
@@ -63,6 +76,12 @@ public sealed class HotkeyService : IDisposable
     private void RegisterGhost(int id, uint modifiers, uint key)
     {
         ghostHotkeyIds.Add(id);
+        RegisterHotKey(hwnd, id, modifiers, key);
+    }
+
+    private void RegisterTextShortcut(int id, int shortcutId, uint modifiers, uint key)
+    {
+        idToTextShortcut[id] = shortcutId;
         RegisterHotKey(hwnd, id, modifiers, key);
     }
 
@@ -82,6 +101,10 @@ public sealed class HotkeyService : IDisposable
         {
             GhostPressed?.Invoke(this, EventArgs.Empty);
         }
+        else if (idToTextShortcut.TryGetValue(wParam.ToInt32(), out var shortcutId))
+        {
+            TextShortcutPressed?.Invoke(this, shortcutId);
+        }
 
         return IntPtr.Zero;
     }
@@ -98,6 +121,7 @@ public sealed class HotkeyService : IDisposable
 
     private readonly Dictionary<int, WorkflowKind> idToWorkflow = [];
     private readonly HashSet<int> ghostHotkeyIds = [];
+    private readonly Dictionary<int, int> idToTextShortcut = [];
 
     private void UnregisterAll()
     {
@@ -113,6 +137,7 @@ public sealed class HotkeyService : IDisposable
 
         idToWorkflow.Clear();
         ghostHotkeyIds.Clear();
+        idToTextShortcut.Clear();
     }
 
     [DllImport("user32.dll", SetLastError = true)]
