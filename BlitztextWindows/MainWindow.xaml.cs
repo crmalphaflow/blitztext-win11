@@ -773,6 +773,14 @@ public partial class MainWindow : Window, IDisposable
         StatusBorder.Background = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(colors.Background));
         StatusBorder.BorderBrush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(colors.Border));
         StatusText.Foreground = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(colors.Text));
+        StatusDot.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(state switch
+        {
+            AppVisualState.Recording => "#EF4444",
+            AppVisualState.Processing => "#F59E0B",
+            AppVisualState.Success => "#22C55E",
+            AppVisualState.Error => "#EF4444",
+            _ => "#22C55E"
+        }));
         ghostWindow?.SetState(state);
 
         if (notifyIcon is not null)
